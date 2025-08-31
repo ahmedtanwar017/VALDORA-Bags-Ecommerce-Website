@@ -1,190 +1,326 @@
-// src/pages/Store.jsx
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  FaShoppingCart,
-  FaUserCog,
-  FaBoxOpen,
-  FaSearch,
-} from "react-icons/fa";
-import { FiHelpCircle } from "react-icons/fi";
-import { MdLocalOffer } from "react-icons/md";
-import { AiOutlineInfoCircle } from "react-icons/ai";
 import api from "../api";
-import Spinner from "../Components/Spinner";
+import { toast } from "react-toastify";
+
+const categories = [
+  "all",
+  "totes",
+  "backpacks",
+  "crossbody",
+  "briefcases",
+  "duffles",
+  "clutches",
+  "messenger",
+  "handbags",
+];
+
+// Reusable card component
+const ProductCard = ({ product, addToCart }) => (
+  <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-amber-100">
+    <div className="h-64 overflow-hidden rounded-t-xl">
+      <img
+        src={product.image}
+        alt={product.name}
+        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+      />
+    </div>
+    <div className="p-5">
+      <h3 className="text-lg font-bold text-amber-900 mb-1">{product.name}</h3>
+      <p className="text-amber-700 text-sm mb-3 line-clamp-2">{product.description}</p>
+      <div className="flex justify-between items-center">
+        <span className="text-lg font-bold text-amber-900">${product.price}</span>
+        <button
+          onClick={() => addToCart(product)}
+          className="bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-lg text-sm transition-colors font-medium"
+        >
+          Add to Cart
+        </button>
+      </div>
+    </div>
+  </div>
+);
 
 const Store = () => {
   const [products, setProducts] = useState([]);
+  const [filter, setFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [cart, setCart] = useState([]);
+  const [cartVisible, setCartVisible] = useState(false);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
+  // Fetch products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const { data } = await api.get("/products");
-        setProducts(data.message ? [] : data);
+        const res = await api.get("/products/store");
+        setProducts(res.data);
       } catch (err) {
         console.error("Error fetching products:", err);
-        if (err.response?.status === 401) {
-          navigate("/login");
-        }
+        toast.error("Failed to load products");
       } finally {
         setLoading(false);
       }
     };
     fetchProducts();
-  }, [navigate]);
+  }, []);
+
+  const addToCart = (product) => {
+    setCart((prev) => [...prev, product]);
+    toast.success(`${product.name} added to cart!`);
+  };
+
+  // Filter and search
+  const filteredProducts = products.filter((product) => {
+    const matchesCategory = filter === "all" || product.category === filter;
+    const matchesSearch =
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const featuredProduct = products.find((p) => p.featured);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-[#5C4033]">
-      {/* Top Navbar */}
-      <header className="bg-white sticky top-0 z-50 shadow-md">
-        <div className="px-6 py-3 flex justify-between items-center">
-          {/* Logo */}
-          <h1
-            className="text-3xl font-extrabold tracking-widest cursor-pointer text-[#5C4033] hover:text-[#A67C52] transition"
-            onClick={() => navigate("/store")}
+    <div className="min-h-screen bg-amber-50 flex flex-col">
+      {/* Header */}
+      <header className="bg-amber-900 text-white sticky top-0 shadow-md z-10">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold">VALDORA</h1>
+          <nav className="hidden md:block">
+            <ul className="flex gap-6">
+              {["Home", "Products", "About", "Contact"].map((item) => (
+                <li key={item}>
+                  <a
+                    href={`#${item.toLowerCase()}`}
+                    className="hover:text-amber-200 transition-colors"
+                  >
+                    {item}
+                  </a>
+                </li>
+              ))}
+              <li>
+                <a href="/setting" className="hover:text-amber-200 transition-colors">
+                  Settings
+                </a>
+              </li>
+            </ul>
+          </nav>
+          <button
+            onClick={() => setCartVisible(!cartVisible)}
+            className="bg-amber-700 hover:bg-amber-600 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
           >
-            VALDORA
-          </h1>
-
-          {/* Search Bar */}
-          <div className="flex items-center bg-gray-100 rounded-full px-3 py-2 w-72 sm:w-96">
-            <FaSearch className="text-[#5C4033]" />
-            <input
-              type="text"
-              placeholder="Search for products..."
-              className="ml-2 w-full outline-none text-[#5C4033] bg-transparent placeholder-[#A67C52]"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-6 text-lg">
-            <button
-              onClick={() => navigate("/settings")}
-              className="flex items-center gap-2 text-[#A67C52] hover:text-[#5C4033] transition"
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              <FaUserCog /> <span className="hidden sm:inline">Settings</span>
-            </button>
-            <button
-              onClick={() => navigate("/cart")}
-              className="flex items-center gap-2 text-[#A67C52] hover:text-[#5C4033] transition"
-            >
-              <FaShoppingCart /> <span className="hidden sm:inline">Cart</span>
-            </button>
-            <button
-              onClick={() => navigate("/orders")}
-              className="flex items-center gap-2 text-[#A67C52] hover:text-[#5C4033] transition"
-            >
-              <FaBoxOpen /> <span className="hidden sm:inline">Orders</span>
-            </button>
-          </div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+              />
+            </svg>
+            Cart ({cart.length})
+          </button>
         </div>
-
-        {/* Secondary Navbar */}
-        <nav className="bg-white text-[#5C4033] px-6 py-2 flex gap-8 text-sm sm:text-base border-t border-gray-200 overflow-x-auto whitespace-nowrap">
-          <button className="hover:text-[#A67C52] flex items-center gap-2 transition">
-            <AiOutlineInfoCircle /> About
-          </button>
-          <button className="hover:text-[#A67C52] flex items-center gap-2 transition">
-            <MdLocalOffer /> Offers
-          </button>
-          <button className="hover:text-[#A67C52] flex items-center gap-2 transition">
-            <FiHelpCircle /> Help
-          </button>
-          <button className="hover:text-[#A67C52] flex items-center gap-2 transition">
-            Careers
-          </button>
-          <button className="hover:text-[#A67C52] flex items-center gap-2 transition">
-            Blog
-          </button>
-        </nav>
       </header>
 
-      {/* Products Section */}
-      <main className="flex-1 px-6 py-8">
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <Spinner />
-          </div>
-        ) : products.length === 0 ? (
-          <p className="text-center text-gray-600 text-xl">
-            No products available
+      {/* Hero Section */}
+      <section id="home" className="bg-gradient-to-r from-amber-700 to-amber-800 text-white py-16 text-center">
+        <div className="container mx-auto px-4">
+          <h2 className="text-4xl font-bold mb-4">Elevate Your Style</h2>
+          <p className="text-lg mb-8 max-w-2xl mx-auto">
+            Discover our premium collection of bags crafted with excellence for every occasion
           </p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-            {products.map((product) => (
-              <div
-                key={product._id}
-                className="bg-white rounded-2xl shadow-md hover:shadow-lg transform hover:-translate-y-2 transition-all p-5 flex flex-col group border border-gray-200"
-              >
-                {/* Product Image */}
-                <div className="relative">
-                  <img
-                    src={product.image || "/placeholder.png"}
-                    alt={product.name}
-                    className="h-56 w-full object-cover rounded-xl group-hover:scale-105 transition-transform"
-                  />
-                  <span className="absolute top-3 left-3 bg-white border border-[#5C4033] text-[#5C4033] text-xs px-2 py-1 rounded-md font-bold">
-                    New
-                  </span>
-                </div>
+          <button className="bg-white text-amber-900 px-8 py-3 rounded-lg font-semibold hover:bg-amber-100 transition-colors shadow-md">
+            Shop Collection
+          </button>
+        </div>
+      </section>
 
-                {/* Product Info */}
-                <h2 className="mt-4 font-semibold text-lg text-[#5C4033] line-clamp-1">
-                  {product.name}
-                </h2>
-                <p className="text-[#A67C52] text-sm line-clamp-2">
-                  {product.description}
-                </p>
-                <p className="mt-2 font-bold text-lg text-[#5C4033]">
-                  ${product.price}
-                </p>
-
-                {/* Action */}
+      {/* Featured Product */}
+      {featuredProduct && (
+        <section className="py-16 bg-white">
+          <div className="container mx-auto px-4">
+            <h2 className="text-3xl font-bold text-amber-900 mb-10 text-center">
+              Featured Product
+            </h2>
+            <div className="flex flex-col md:flex-row items-center bg-amber-50 rounded-2xl shadow-lg overflow-hidden max-w-5xl mx-auto border border-amber-200">
+              <div className="md:w-1/2 h-96">
+                <img
+                  src={featuredProduct.image}
+                  alt={featuredProduct.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="p-8 md:w-1/2 text-left">
+                <h3 className="text-2xl font-bold text-amber-900 mb-4">
+                  {featuredProduct.name}
+                </h3>
+                <p className="text-amber-700 mb-6">{featuredProduct.description}</p>
+                <p className="text-2xl font-bold text-amber-900 mb-6">${featuredProduct.price}</p>
                 <button
-                  className="mt-auto bg-[#5C4033] hover:bg-[#A67C52] text-white font-semibold py-2 rounded-lg shadow-md transition"
-                  onClick={() => navigate(`/product/${product._id}`)}
+                  onClick={() => addToCart(featuredProduct)}
+                  className="bg-amber-700 hover:bg-amber-800 text-white px-8 py-3 rounded-lg transition-colors font-medium shadow-md"
                 >
-                  View Details
+                  Add to Cart
                 </button>
               </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Products Section */}
+      <section id="products" className="py-16 flex-1">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center text-amber-900 mb-10">Our Collection</h2>
+
+          {/* Search Bar */}
+          <div className="max-w-2xl mx-auto mb-8">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder="Search products by name or description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="block w-full p-4 pl-10 text-sm text-amber-900 border border-amber-300 rounded-lg bg-amber-50 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 bottom-2.5 text-amber-700 hover:text-amber-900 p-2 transition-colors"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Category Filters */}
+          <div className="flex flex-wrap justify-center gap-3 mb-12">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setFilter(category)}
+                className={`px-5 py-2.5 rounded-full transition-all ${
+                  filter === category
+                    ? "bg-amber-700 text-white shadow-md"
+                    : "bg-white text-amber-900 hover:bg-amber-100 border border-amber-200"
+                }`}
+              >
+                {category.charAt(0).toUpperCase() + category.slice(1)}
+              </button>
             ))}
           </div>
-        )}
-      </main>
+
+          {/* Loading & Empty */}
+          {loading && (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-700 mb-4"></div>
+              <p className="text-amber-700 text-lg">Loading products...</p>
+            </div>
+          )}
+
+          {!loading && filteredProducts.length === 0 && !searchQuery && (
+            <div className="text-center py-12">
+              <p className="text-amber-700 text-lg">No products found in this category.</p>
+            </div>
+          )}
+
+          {/* Products Grid */}
+          {!loading && filteredProducts.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {filteredProducts.map((product) => (
+                <ProductCard key={product._id} product={product} addToCart={addToCart} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Cart Sidebar */}
+      {cartVisible && (
+        <div className="fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-20 p-6 border-l border-amber-200">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold text-amber-900">Your Cart</h3>
+            <button onClick={() => setCartVisible(false)} className="text-amber-700 hover:text-amber-900">✕</button>
+          </div>
+          <div className="space-y-4">
+            {cart.length === 0 ? (
+              <p className="text-amber-700">Your cart is empty</p>
+            ) : (
+              cart.map((item, index) => (
+                <div key={index} className="flex items-center border-b border-amber-100 pb-4">
+                  <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />
+                  <div className="ml-3 flex-1">
+                    <p className="text-sm font-medium text-amber-900">{item.name}</p>
+                    <p className="text-amber-700">${item.price}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          {cart.length > 0 && (
+            <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-amber-200 bg-white">
+              <div className="flex justify-between mb-4">
+                <span className="font-semibold">Total:</span>
+                <span className="font-bold text-amber-900">
+                  ${cart.reduce((total, item) => total + item.price, 0).toFixed(2)}
+                </span>
+              </div>
+              <button className="w-full bg-amber-700 hover:bg-amber-800 text-white py-3 rounded-lg font-medium transition-colors">
+                Checkout
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Footer */}
-      <footer className="bg-white text-[#5C4033] px-6 py-10 mt-auto border-t border-gray-200">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+      <footer className="bg-amber-900 text-white mt-16">
+        <div className="container mx-auto px-4 py-12 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="font-bold mb-2">About VALDORA</h3>
-            <p className="text-[#A67C52] text-sm">
-              Premium bags & accessories crafted with style and durability.
+            <h4 className="font-bold mb-4">VALDORA</h4>
+            <p className="text-sm text-amber-200">
+              Premium bags and accessories crafted for your style.
             </p>
           </div>
           <div>
-            <h3 className="font-bold mb-2">Customer Care</h3>
-            <ul className="space-y-1 text-[#A67C52] text-sm">
-              <li>Help Center</li>
-              <li>Shipping & Returns</li>
-              <li>Track My Order</li>
-              <li>Contact Us</li>
+            <h4 className="font-bold mb-4">Shop</h4>
+            <ul className="space-y-2 text-amber-200 text-sm">
+              <li><a href="#products" className="hover:underline">All Products</a></li>
+              <li><a href="#home" className="hover:underline">Featured</a></li>
+              <li><a href="/setting" className="hover:underline">Settings</a></li>
             </ul>
           </div>
           <div>
-            <h3 className="font-bold mb-2">Stay Connected</h3>
-            <ul className="space-y-1 text-[#A67C52] text-sm">
-              <li>Instagram</li>
-              <li>Facebook</li>
-              <li>Twitter</li>
-              <li>LinkedIn</li>
+            <h4 className="font-bold mb-4">Company</h4>
+            <ul className="space-y-2 text-amber-200 text-sm">
+              <li><a href="#about" className="hover:underline">About Us</a></li>
+              <li><a href="#contact" className="hover:underline">Contact</a></li>
+              <li><a href="#careers" className="hover:underline">Careers</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-bold mb-4">Support</h4>
+            <ul className="space-y-2 text-amber-200 text-sm">
+              <li><a href="#faq" className="hover:underline">FAQ</a></li>
+              <li><a href="#shipping" className="hover:underline">Shipping</a></li>
+              <li><a href="#returns" className="hover:underline">Returns</a></li>
             </ul>
           </div>
         </div>
-        <div className="text-[#A67C52] text-sm border-t border-gray-200 pt-4 flex justify-between">
-          <p>© 2025 VALDORA Inc. All rights reserved.</p>
-          <p>English | $USD - United States</p>
+        <div className="text-center text-amber-200 text-sm py-4 border-t border-amber-700">
+          © {new Date().getFullYear()} VALDORA. All rights reserved.
         </div>
       </footer>
     </div>

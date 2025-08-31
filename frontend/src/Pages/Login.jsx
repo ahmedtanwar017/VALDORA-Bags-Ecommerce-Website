@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Spinner from "../Components/Spinner";
 import { toast } from "react-toastify";
@@ -9,13 +9,6 @@ const Login = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  // Redirect if already logged in
-  useEffect(() => {
-    if (localStorage.getItem("token")) {
-      navigate("/store", { replace: true });
-    }
-  }, [navigate]);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -31,13 +24,11 @@ const Login = () => {
 
     setLoading(true);
     try {
-      const { data } = await api.post("/users/login", formData);
-
-      if (data.token) localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user || {}));
+      // 🔹 Backend will set HttpOnly cookie automatically
+      await api.post("/users/login", formData);
 
       toast.success("✅ Login successful!");
-      navigate("/store", { replace: true }); // <-- Fixed navigation here
+      navigate("/store", { replace: true });
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "❌ Invalid credentials");
@@ -47,55 +38,76 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center pt-10 px-4">
+    <div className="min-h-screen bg-amber-50 flex flex-col items-center justify-center px-4">
       {/* Logo */}
-      <h1 className="text-4xl font-bold uppercase text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-yellow-400 drop-shadow-lg mb-6">
+      <h1 className="text-4xl font-bold uppercase text-transparent bg-clip-text bg-gradient-to-r from-amber-700 to-amber-500 drop-shadow-lg mb-6">
         VALDORA
       </h1>
 
       {/* Login Form */}
-      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8">
-        <h2 className="text-2xl font-bold mb-6 text-center">Sign in</h2>
+      <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8 border border-amber-200">
+        <h2 className="text-2xl font-bold mb-6 text-center text-amber-900">Sign in to your account</h2>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Email */}
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            className="w-full border px-4 py-3 rounded-md focus:ring-2 focus:ring-yellow-400 focus:outline-none"
-          />
-
-          {/* Password */}
-          <div className="relative">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-amber-800 mb-1">
+              Email
+            </label>
             <input
-              type={showPassword ? "text" : "password"}
-              name="password"
-              placeholder="Password"
-              value={formData.password}
+              type="email"
+              id="email"
+              name="email"
+              placeholder="Enter your email"
+              value={formData.email}
               onChange={handleChange}
               required
-              className="w-full border px-4 py-3 rounded-md focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+              className="w-full border border-amber-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 focus:outline-none transition-colors"
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? "🙈" : "👁"}
-            </button>
+          </div>
+
+          {/* Password */}
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-amber-800 mb-1">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                name="password"
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                className="w-full border border-amber-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 focus:outline-none transition-colors pr-12"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-amber-600 hover:text-amber-800 transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Forgot Password */}
-          <div className="text-left">
+          <div className="text-right">
             <button
               type="button"
               onClick={() => navigate("/forgot-password")}
-              className="text-sm text-blue-600 hover:underline"
+              className="text-sm text-amber-700 hover:text-amber-900 hover:underline transition-colors"
             >
               Forgot password?
             </button>
@@ -104,23 +116,25 @@ const Login = () => {
           {/* Submit */}
           <button
             type="submit"
-            className="w-full h-10 bg-yellow-400 text-black font-semibold rounded-md hover:bg-yellow-500 flex items-center justify-center"
+            className="w-full h-12 bg-amber-700 text-white font-semibold rounded-lg hover:bg-amber-800 transition-colors flex items-center justify-center shadow-md hover:shadow-lg"
             disabled={loading}
           >
-            {loading ? <Spinner /> : "Continue"}
+            {loading ? <Spinner /> : "Sign in"}
           </button>
         </form>
 
         {/* Register Link */}
-        <p className="text-sm text-center mt-6">
-          New to VALDORA?{" "}
-          <span
-            onClick={() => navigate("/register")}
-            className="text-blue-600 cursor-pointer hover:underline"
-          >
-            Create your account
-          </span>
-        </p>
+        <div className="mt-6 text-center pt-5 border-t border-amber-200">
+          <p className="text-sm text-amber-800">
+            New to VALDORA?{" "}
+            <button
+              onClick={() => navigate("/register")}
+              className="font-semibold text-amber-700 hover:text-amber-900 hover:underline transition-colors"
+            >
+              Create your account
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );

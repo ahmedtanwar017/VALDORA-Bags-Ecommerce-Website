@@ -7,12 +7,16 @@ const registerUser = async (req, res) => {
     const { fullname, email, password } = req.body;
 
     if (!fullname || !email || !password) {
-      return res.status(400).json({ success: false, message: "All fields are required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "All fields are required" });
     }
 
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ success: false, message: "User already exists" });
+      return res
+        .status(400)
+        .json({ success: false, message: "User already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -35,7 +39,11 @@ const registerUser = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "User registered successfully",
-      user: { id: newUser._id, fullname: newUser.fullname, email: newUser.email },
+      user: {
+        id: newUser._id,
+        fullname: newUser.fullname,
+        email: newUser.email,
+      },
       token,
     });
   } catch (err) {
@@ -49,17 +57,23 @@ const loginUser = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ success: false, message: "Email and password are required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email and password are required" });
     }
 
     const user = await userModel.findOne({ email });
     if (!user) {
-      return res.status(400).json({ success: false, message: "Invalid credentials" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid credentials" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: "Invalid credentials" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid credentials" });
     }
 
     const token = generateToken(user);
@@ -93,8 +107,31 @@ const logoutUser = async (req, res) => {
     res.status(200).json({ success: true, message: "Logout successful" });
   } catch (err) {
     console.error("Logout error:", err);
-    res.status(500).json({ success: false, message: "Server error during logout" });
+    res
+      .status(500)
+      .json({ success: false, message: "Server error during logout" });
   }
 };
 
-module.exports = { registerUser, loginUser, logoutUser };
+const getMe = (req, res) => {
+  // Validate that user authentication was successful
+  if (!req.user?.id) {
+    return res.status(401).json({
+      error: "Authentication required",
+      message: "User not authenticated",
+    });
+  }
+
+  // Return only essential, non-sensitive user information
+  res.status(200).json({
+    user: {
+      id: req.user.id,
+      name: req.user.name,
+      // Optional: include other safe fields if they exist
+      ...(req.user.email && { email: req.user.email }),
+      ...(req.user.username && { username: req.user.username }),
+    },
+  });
+};
+
+module.exports = { registerUser, loginUser, logoutUser, getMe };

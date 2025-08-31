@@ -1,11 +1,28 @@
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
+import api from "../api"; // <-- your Axios instance
 
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem("token"); // ya redux/context se user state
+  const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
 
-  if (!token) {
-    return <Navigate to="/login" replace />; // redirect to login if not logged in
-  }
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        await api.get("/users/me"); // uses your API instance
+        setAuthorized(true); // user is logged in
+      } catch (err) {
+        setAuthorized(false); // not logged in
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  if (loading) return <div>Loading...</div>;
+  if (!authorized) return <Navigate to="/login" replace />;
 
   return children;
 };

@@ -1,12 +1,10 @@
 const express = require("express");
+const { getProducts } = require("../controllers/productController.js");
+const isloggedIn = require("../middleware/authMiddleware.js");
+
 const router = express.Router();
-const { getProducts, getProductById } = require("../controllers/productContoller")
-const isloggedIn = require("../middleware/authMiddleware");
 
-// All products (only for logged-in users)
-router.get("/", isloggedIn, getProducts);
-
-// Single product by ID (only for logged-in users)
-router.get("/:id", isloggedIn, getProductById);
+// ✅ pass function references, NOT calls
+router.get("/store", isloggedIn, getProducts);
 
 module.exports = router;

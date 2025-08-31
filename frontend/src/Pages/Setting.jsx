@@ -1,271 +1,328 @@
-// src/pages/Setting.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import api from "../api";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import Spinner from "../Components/Spinner";
-import { FiUser, FiLock, FiShield, FiLogOut, FiEdit, FiKey, FiAward } from "react-icons/fi";
+import {
+  User,
+  Shield,
+  Settings as Gear,
+  Bell,
+  ShieldCheck,
+  KeyRound,
+  LogOut,
+} from "lucide-react";
 
 const Setting = () => {
-  const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState("profile");
-
-  const [userData, setUserData] = useState({ fullname: "", email: "" });
-  const [formData, setFormData] = useState({ fullname: "", email: "" });
-  const [passwords, setPasswords] = useState({ current: "", new: "" });
-
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("profile");
+  const [user, setUser] = useState(null);
+  const [secretCode, setSecretCode] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const fetchUserData = useCallback(async () => {
-    try {
-      const { data } = await api.get("/users/me", { withCredentials: true });
-      setUserData({ 
-        fullname: data.fullname || "", 
-        email: data.email || "" 
-      });
-      setFormData({ 
-        fullname: data.fullname || "", 
-        email: data.email || "" 
-      });
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to fetch user data");
-    }
+  const [preferences, setPreferences] = useState({
+    language: "English",
+    timezone: "UTC+00:00 (GMT)",
+    theme: "Light",
+  });
+
+  const [notifications, setNotifications] = useState({
+    email: true,
+    push: false,
+  });
+
+  // Fetch logged-in user
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await api.get("/users/me");
+        setUser(res.data);
+      } catch {
+        toast.error("⚠️ Failed to load user details");
+      }
+    };
+    fetchUser();
   }, []);
 
-  useEffect(() => {
-    fetchUserData();
-  }, [fetchUserData]);
-
-  const handleProfileUpdate = async (e) => {
-    e.preventDefault();
-    try {
-      setSaving(true);
-      const { data } = await api.put("/users/settings", formData, {
-        withCredentials: true,
-      });
-      toast.success(data.message || "Profile updated successfully");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update profile");
-    } finally {
-      setSaving(false);
+  // Save profile
+  const handleSaveProfile = async () => {
+    if (!user?.fullname || !user?.email) {
+      return toast.error("⚠️ Full Name and Email are required");
     }
-  };
-
-  const handlePasswordChange = async (e) => {
-    e.preventDefault();
-    if (!passwords.current || !passwords.new) {
-      return toast.error("Please fill all password fields");
-    }
+    setLoading(true);
     try {
-      setSaving(true);
-      const { data } = await api.put("/users/change-password", passwords, {
-        withCredentials: true,
-      });
-      toast.success(data.message || "Password updated");
-      setPasswords({ current: "", new: "" });
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update password");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleMakeAdmin = async (e) => {
-    e.preventDefault();
-    if (!code.trim()) return toast.error("Please enter an admin code");
-
-    try {
-      setLoading(true);
-      const { data } = await api.put(
-        "/users/settings",
-        { code },
-        { withCredentials: true }
-      );
-      toast.success(data.message || "Updated successfully");
-      localStorage.setItem("isAdmin", "true");
-      navigate("/admin");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Verification failed");
-      if (err.response?.status === 403) setCode("");
+      await api.put("/users/me", user);
+      toast.success("✅ Profile updated successfully");
+    } catch {
+      toast.error("⚠️ Failed to update profile");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("isAdmin");
-    toast.success("Logged out successfully");
-    navigate("/login");
+  // Update password
+  const handleUpdatePassword = async () => {
+    if (!user?.password) return toast.error("⚠️ Enter a new password first");
+    setLoading(true);
+    try {
+      await api.put("/users/update-password", { password: user.password });
+      toast.success("🔑 Password updated");
+      setUser({ ...user, password: "" });
+    } catch {
+      toast.error("⚠️ Failed to update password");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const SidebarButton = ({ tab, icon: Icon, label }) => (
-    <button
-      type="button"
-      onClick={() => setActiveTab(tab)}
-      className={`flex items-center gap-3 w-full px-4 py-3 text-left rounded-xl transition-all duration-300 transform
-        ${
-          activeTab === tab
-            ? "bg-gradient-to-r from-[#5C4033] to-[#8B5A2B] text-white font-semibold shadow-lg scale-[1.02]"
-            : "text-[#5C4033] hover:bg-[#F9F3EB] hover:text-[#5C4033] hover:translate-x-1"
-        }`}
-    >
-      <Icon className="w-5 h-5" />
-      {label}
-    </button>
-  );
+  // Preferences
+  const handlePreferenceChange = (key, value) =>
+    setPreferences((prev) => ({ ...prev, [key]: value }));
 
-  const InputField = useCallback(({ label, value, onChange, type = "text", placeholder }) => (
-    <div className="relative">
-      <label className="block text-sm mb-2 font-medium text-[#8B5A2B]">
-        {label}
-      </label>
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl border-2 border-[#D6BCA8] bg-white focus:border-[#8B5A2B] focus:ring-2 focus:ring-[#8B5A2B]/20 outline-none transition-all duration-300 shadow-sm hover:shadow-md"
-      />
-    </div>
-  ), []);
+  // Notifications
+  const handleNotificationChange = (key) =>
+    setNotifications((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const SubmitButton = useCallback(({ children, loading: isLoading }) => (
-    <button
-      type="submit"
-      disabled={isLoading}
-      className="px-8 py-3 bg-gradient-to-r from-[#5C4033] to-[#8B5A2B] text-white font-semibold rounded-xl hover:from-[#8B5A2B] hover:to-[#5C4033] transition-all duration-300 disabled:opacity-70 flex items-center justify-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-    >
-      {isLoading ? <Spinner size={20} /> : children}
-    </button>
-  ), []);
+  // Admin login using navigate
+  const handleAdminLogin = async () => {
+    if (!secretCode.trim()) return toast.error("⚠️ Secret code is required");
+    setLoading(true);
+    try {
+      const res = await api.post("/admins/verify", { secretCode });
+      if (res.data?.success) {
+        setIsAdmin(true);
+        toast.success("✅ Admin access granted!");
+        navigate("/admin", { replace: true });
+      } else {
+        toast.error(res.data?.message || "❌ Invalid secret code");
+      }
+    } catch {
+      toast.error("⚠️ Server error while verifying admin");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Logout
+  const handleLogout = async () => {
+    setLoading(true);
+    try {
+      await api.get("/users/logout");
+      setIsAdmin(false);
+      setUser(null);
+      toast.success("👋 Logged out successfully");
+      navigate("/login", { replace: true });
+    } catch {
+      toast.error("⚠️ Failed to logout");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const tabs = [
+    { id: "profile", label: "Profile", icon: <User className="w-5 h-5" /> },
+    { id: "security", label: "Security", icon: <Shield className="w-5 h-5" /> },
+    { id: "preferences", label: "Preferences", icon: <Gear className="w-5 h-5" /> },
+    { id: "notifications", label: "Notifications", icon: <Bell className="w-5 h-5" /> },
+    { id: "admin", label: "Admin Access", icon: <ShieldCheck className="w-5 h-5" /> },
+  ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#FDF8F4] to-[#F9F3EB] text-[#5C4033]">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm shadow-sm px-6 py-4 flex justify-between items-center sticky top-0 z-10">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-[#5C4033] to-[#8B5A2B] bg-clip-text text-transparent">
-          Account Settings
-        </h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex">
+      {/* Sidebar */}
+      <aside className="w-64 bg-white shadow-md rounded-r-2xl p-6 flex flex-col justify-between">
+        <div>
+          <h2 className="text-xl font-bold mb-6">⚙️ Settings</h2>
+          <nav className="flex flex-col gap-2">
+            {tabs.map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveTab(item.id);
+                }}
+                className={`flex items-center px-4 py-3 rounded-xl transition-all cursor-pointer ${
+                  activeTab === item.id
+                    ? "bg-amber-100 text-amber-800 font-semibold shadow-sm"
+                    : "text-gray-600 hover:bg-amber-50"
+                }`}
+              >
+                <span className="mr-3">{item.icon}</span>
+                {item.label}
+                {item.id === "admin" && isAdmin && (
+                  <span className="ml-auto bg-amber-700 text-white text-xs px-2 py-1 rounded-full">
+                    Admin
+                  </span>
+                )}
+              </a>
+            ))}
+          </nav>
+        </div>
+
+        {/* Logout Button */}
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 px-4 py-2 bg-white text-[#5C4033] font-semibold rounded-xl border border-[#D6BCA8] hover:bg-[#5C4033] hover:text-white transition-all duration-300 shadow-sm hover:shadow-md"
+          disabled={loading}
+          className="flex items-center px-4 py-3 mt-6 rounded-xl text-red-600 hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <FiLogOut className="w-5 h-5" />
+          <LogOut className="w-5 h-5 mr-3" />
           Logout
         </button>
-      </header>
+      </aside>
 
-      {/* Main */}
-      <div className="flex flex-1 p-6">
-        {/* Sidebar */}
-        <aside className="w-64 bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-[#D6BCA8] shadow-lg mr-6 h-fit">
-          <div className="flex items-center gap-3 mb-6 p-4 bg-gradient-to-r from-[#F9F3EB] to-[#FDF8F4] rounded-xl">
-            <div className="w-14 h-14 rounded-full bg-gradient-to-r from-[#5C4033] to-[#8B5A2B] flex items-center justify-center text-white font-bold text-xl shadow-md">
-              {userData.fullname?.[0]?.toUpperCase() || "U"}
-            </div>
-            <div>
-              <h2 className="font-semibold text-[#5C4033]">{userData.fullname}</h2>
-              <p className="text-sm text-[#8B5A2B]">{userData.email}</p>
-            </div>
-          </div>
-          <nav className="space-y-3">
-            <SidebarButton tab="profile" icon={FiUser} label="Profile" />
-            <SidebarButton tab="security" icon={FiLock} label="Security" />
-            <SidebarButton tab="admin" icon={FiShield} label="Admin Access" />
-          </nav>
-        </aside>
-
-        {/* Content */}
-        <main className="flex-1 bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-[#D6BCA8] shadow-lg">
+      {/* Main Content */}
+      <main className="flex-1 p-10">
+        <div className="bg-white rounded-2xl shadow p-8">
+          {/* Profile */}
           {activeTab === "profile" && (
-            <form onSubmit={handleProfileUpdate} className="space-y-6 max-w-xl">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-gradient-to-r from-[#F9F3EB] to-[#FDF8F4] rounded-xl">
-                  <FiEdit className="w-6 h-6 text-[#8B5A2B]" />
-                </div>
-                <h2 className="text-2xl font-bold text-[#5C4033]">
-                  Profile Information
-                </h2>
+            <div id="profile">
+              <h2 className="text-2xl font-bold mb-6 flex items-center">
+                <User className="w-6 h-6 mr-2 text-amber-700" /> Profile Settings
+              </h2>
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Full Name"
+                  value={user?.fullname || ""}
+                  onChange={(e) => setUser({ ...user, fullname: e.target.value })}
+                  className="w-full p-3 border rounded-lg"
+                />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={user?.email || ""}
+                  onChange={(e) => setUser({ ...user, email: e.target.value })}
+                  className="w-full p-3 border rounded-lg"
+                />
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={loading}
+                  className="px-6 py-3 bg-amber-600 text-white rounded-xl shadow hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Save Changes
+                </button>
               </div>
-              <InputField
-                label="Full Name"
-                value={formData.fullname}
-                onChange={(e) => setFormData({ ...formData, fullname: e.target.value })}
-              />
-              <InputField
-                label="Email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-              <SubmitButton loading={saving}>
-                Save Changes
-              </SubmitButton>
-            </form>
+            </div>
           )}
 
+          {/* Security */}
           {activeTab === "security" && (
-            <form onSubmit={handlePasswordChange} className="space-y-6 max-w-xl">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-gradient-to-r from-[#F9F3EB] to-[#FDF8F4] rounded-xl">
-                  <FiKey className="w-6 h-6 text-[#8B5A2B]" />
-                </div>
-                <h2 className="text-2xl font-bold text-[#5C4033]">
-                  Security Settings
-                </h2>
-              </div>
-              <InputField
-                label="Current Password"
+            <div id="security">
+              <h2 className="text-2xl font-bold mb-6 flex items-center">
+                <Shield className="w-6 h-6 mr-2 text-amber-700" /> Security
+              </h2>
+              <input
                 type="password"
-                value={passwords.current}
-                onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
-                placeholder="Enter current password"
+                placeholder="New Password"
+                onChange={(e) => setUser({ ...user, password: e.target.value })}
+                className="w-full p-3 border rounded-lg mb-4"
               />
-              <InputField
-                label="New Password"
-                type="password"
-                value={passwords.new}
-                onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
-                placeholder="Enter new password"
-              />
-              <SubmitButton loading={saving}>
+              <button
+                onClick={handleUpdatePassword}
+                disabled={loading}
+                className="px-6 py-3 bg-red-600 text-white rounded-xl shadow hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 Update Password
-              </SubmitButton>
-            </form>
+              </button>
+            </div>
           )}
 
-          {activeTab === "admin" && (
-            <form onSubmit={handleMakeAdmin} className="space-y-6 max-w-xl">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-gradient-to-r from-[#F9F3EB] to-[#FDF8F4] rounded-xl">
-                  <FiAward className="w-6 h-6 text-[#8B5A2B]" />
-                </div>
-                <h2 className="text-2xl font-bold text-[#5C4033]">
-                  Admin Access
-                </h2>
+          {/* Preferences */}
+          {activeTab === "preferences" && (
+            <div id="preferences">
+              <h2 className="text-2xl font-bold mb-6 flex items-center">
+                <Gear className="w-6 h-6 mr-2 text-amber-700" /> Preferences
+              </h2>
+              <div className="space-y-4">
+                <select
+                  value={preferences.language}
+                  onChange={(e) => handlePreferenceChange("language", e.target.value)}
+                  className="w-full p-3 border rounded-lg"
+                >
+                  <option>English</option>
+                  <option>Spanish</option>
+                  <option>Hindi</option>
+                </select>
+                <select
+                  value={preferences.timezone}
+                  onChange={(e) => handlePreferenceChange("timezone", e.target.value)}
+                  className="w-full p-3 border rounded-lg"
+                >
+                  <option>UTC+00:00 (GMT)</option>
+                  <option>UTC+05:30 (IST)</option>
+                  <option>UTC-08:00 (PST)</option>
+                </select>
+                <select
+                  value={preferences.theme}
+                  onChange={(e) => handlePreferenceChange("theme", e.target.value)}
+                  className="w-full p-3 border rounded-lg"
+                >
+                  <option>Light</option>
+                  <option>Dark</option>
+                  <option>System</option>
+                </select>
               </div>
-              <InputField
-                label="Secret Admin Code"
-                type="password"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="Enter secret code"
-              />
-              <div className="bg-gradient-to-r from-[#F9F3EB] to-[#FDF8F4] p-4 rounded-xl border border-[#D6BCA8]">
-                <p className="text-sm text-[#8B5A2B]">
-                  Enter the special admin code to gain administrator privileges. This will give you access to additional features and controls.
-                </p>
-              </div>
-              <SubmitButton loading={loading}>
-                {loading ? "Verifying..." : "Verify Admin Access"}
-              </SubmitButton>
-            </form>
+            </div>
           )}
-        </main>
-      </div>
+
+          {/* Notifications */}
+          {activeTab === "notifications" && (
+            <div id="notifications">
+              <h2 className="text-2xl font-bold mb-6 flex items-center">
+                <Bell className="w-6 h-6 mr-2 text-amber-700" /> Notifications
+              </h2>
+              <div className="space-y-3">
+                <label className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={notifications.email}
+                    onChange={() => handleNotificationChange("email")}
+                  />
+                  Email Notifications
+                </label>
+                <label className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={notifications.push}
+                    onChange={() => handleNotificationChange("push")}
+                  />
+                  Push Notifications
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Admin */}
+          {activeTab === "admin" && (
+            <div id="admin">
+              <h2 className="text-2xl font-bold mb-6 flex items-center">
+                <ShieldCheck className="w-6 h-6 mr-2 text-amber-700" /> Admin Access
+              </h2>
+              {isAdmin ? (
+                <p className="text-green-600">✅ You have admin privileges</p>
+              ) : (
+                <div className="space-y-4">
+                  <input
+                    type="password"
+                    placeholder="Enter Secret Code"
+                    value={secretCode}
+                    onChange={(e) => setSecretCode(e.target.value)}
+                    className="w-full p-3 border rounded-lg"
+                  />
+                  <button
+                    onClick={handleAdminLogin}
+                    disabled={loading}
+                    className="px-6 py-3 bg-indigo-600 text-white rounded-xl shadow hover:bg-indigo-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <KeyRound className="w-5 h-5 mr-2" /> Verify Admin
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 };
