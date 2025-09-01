@@ -5,10 +5,11 @@ import Register from "./Pages/Register";
 import Login from "./Pages/Login";
 import Logout from "./Pages/Logout";
 import Store from "./Pages/Store";
-import Admin from "./Pages/Admin";
+import AdminPanel from "./Pages/Admin";
 import Setting from "./Pages/Setting";
 
 import ProtectedRoute from "./Components/ProtectedRoute";
+
 
 function App() {
   return (
@@ -50,7 +51,7 @@ function App() {
           path="/admin"
           element={
             <ProtectedRoute adminOnly={true}>
-              <Admin />
+              <AdminPanel />
             </ProtectedRoute>
           }
         />
